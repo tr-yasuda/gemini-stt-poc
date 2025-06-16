@@ -172,14 +172,6 @@ src/
    - マイクが正常に動作しているか確認
    - 他のアプリケーションがマイクを使用していないか確認
 
-## 🤝 コントリビューション
-
-1. このリポジトリをフォーク
-2. 機能ブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'Add some amazing feature'`)
-4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
-
 ## 📄 ライセンス
 
 このプロジェクトはMITライセンスの下で公開されています。
