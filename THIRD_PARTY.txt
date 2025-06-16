@@ -1,0 +1,79 @@
+====================
+THIRD PARTY LICENSES
+====================
+
+This project uses the following third-party libraries and components:
+
+## Google Generative AI SDK (@google/genai)
+- Version: ^1.5.1
+- License: Apache-2.0
+- Repository: https://github.com/google-gemini/genai-js
+- Copyright: Google LLC
+
+## React
+- Version: ^19.1.0
+- License: MIT
+- Repository: https://github.com/facebook/react
+- Copyright: Meta Platforms, Inc. and affiliates
+
+## React DOM
+- Version: ^19.1.0
+- License: MIT
+- Repository: https://github.com/facebook/react
+- Copyright: Meta Platforms, Inc. and affiliates
+
+## Radix UI Components
+- @radix-ui/react-label ^2.1.7
+- @radix-ui/react-progress ^1.1.7
+- @radix-ui/react-separator ^1.1.7
+- @radix-ui/react-slider ^1.3.5
+- @radix-ui/react-slot ^1.2.3
+- @radix-ui/react-switch ^1.2.5
+- License: MIT
+- Repository: https://github.com/radix-ui/primitives
+- Copyright: Radix UI contributors
+
+## Tailwind CSS
+- Version: ^4.1.10
+- License: MIT
+- Repository: https://github.com/tailwindlabs/tailwindcss
+- Copyright: Tailwind Labs Inc.
+
+## Lucide React
+- Version: ^0.515.0
+- License: ISC
+- Repository: https://github.com/lucide-icons/lucide
+- Copyright: Lucide contributors
+
+## TypeScript
+- Version: ~5.8.3
+- License: Apache-2.0
+- Repository: https://github.com/microsoft/TypeScript
+- Copyright: Microsoft Corporation
+
+## Vite
+- Version: ^6.3.5
+- License: MIT
+- Repository: https://github.com/vitejs/vite
+- Copyright: Evan You and Vite contributors
+
+## Additional Utility Libraries
+- class-variance-authority ^0.7.1 (Apache-2.0)
+- clsx ^2.1.1 (MIT)
+- tailwind-merge ^3.3.1 (MIT)
+
+## Development Dependencies
+- @biomejs/biome 1.9.4 (MIT)
+- @types/node ^24.0.1 (MIT)
+- @types/react ^19.1.2 (MIT)
+- @types/react-dom ^19.1.2 (MIT)
+- @vitejs/plugin-react ^4.4.1 (MIT)
+- tw-animate-css ^1.3.4 (MIT)
+
+---
+
+For the full license text of each dependency, please refer to their respective repositories or the node_modules folder after installation.
+
+Apache-2.0 License: https://opensource.org/licenses/Apache-2.0
+MIT License: https://opensource.org/licenses/MIT
+ISC License: https://opensource.org/licenses/ISC
