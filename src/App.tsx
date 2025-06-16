@@ -1,4 +1,4 @@
-import AudioRecorder from './components/SpeechRecorder';
+import AudioRecorder from "./components/SpeechRecorder";
 
 function App() {
   return (

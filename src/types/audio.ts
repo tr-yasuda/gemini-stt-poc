@@ -1,4 +1,4 @@
-export interface RecordedItem {
+export type RecordedItem = {
   id: string;
   timestamp: Date;
   audioBlob: Blob;
@@ -7,13 +7,13 @@ export interface RecordedItem {
   isTranscribing?: boolean;
 }
 
-export interface SilenceDetectionConfig {
+export type SilenceDetectionConfig = {
   enabled: boolean;
   threshold: number;
   duration: number;
 }
 
-export interface VolumeMonitoringData {
+export type VolumeMonitoringData = {
   currentVolume: number;
   isAboveThreshold: boolean;
 }

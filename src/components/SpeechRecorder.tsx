@@ -82,18 +82,18 @@ const AudioRecorder = () => {
     );
   };
 
-  const handleStopRecording = () => {
+  const handleStopRecording = async () => {
     stopRecording();
-    stopVolumeMonitoring();
+    await stopVolumeMonitoring();
   };
 
   const handleSplitRecording = () => {
     splitRecording((audioBlob, duration) => {
       const newItem = addRecording(audioBlob, duration);
       // 分割された新しいセグメントも自動書き起こし
-      setTimeout(() => {
+      setTimeout(async () => {
         console.log("分割セグメント自動書き起こしを開始:", newItem.id);
-        handleTranscribeAudio(newItem);
+        await handleTranscribeAudio(newItem);
       }, 500);
     });
     resetSilenceTimer();
