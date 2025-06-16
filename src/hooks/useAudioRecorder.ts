@@ -172,8 +172,8 @@ export const useAudioRecorder = () => {
               blobSize: audioBlob.size,
             });
 
-            if (segmentDuration > 0.5 && audioBlob.size > 0) {
-              // 0.5秒以上の録音のみ保存
+            if (segmentDuration > 1.5 && audioBlob.size > 0) {
+              // 1.5 秒以上の録音のみ保存
               onRecordingSaved(audioBlob, segmentDuration);
             } else {
               console.log("セグメントをスキップ - 時間またはサイズが不足");
