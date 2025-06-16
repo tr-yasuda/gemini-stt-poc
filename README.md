@@ -1,16 +1,16 @@
 # Gemini STT PoC
 
-Google Gemini AIを使用した音声録音・書き起こしシステムのプルーフ・オブ・コンセプト（PoC）アプリケーションです。
+Google Gemini AI を使用した音声録音・書き起こしシステムのプルーフ・オブ・コンセプト（PoC）アプリケーションです。
 
 ## 🎯 概要
 
-このアプリケーションは、音声を録音し、Google Gemini 2.0 Flash AIを使用して自動的に日本語の文字起こしを行う Web アプリケーションです。
+このアプリケーションは、音声を録音し、Google Gemini 2.0 Flash AI を使用して自動的に日本語の文字起こしを行う Web アプリケーションです。
 
 ### 主な機能
 
 - **音声録音**: ブラウザのマイクを使用してリアルタイム音声録音
 - **無音検出**: 設定可能な閾値と継続時間による自動セグメント分割
-- **自動書き起こし**: Google Gemini APIを使用した高精度な日本語音声転写
+- **自動書き起こし**: Google Gemini API を使用した高精度な日本語音声書き起こし
 - **録音管理**: 録音されたセグメントの再生、書き起こし、ダウンロード機能
 - **リアルタイム音量監視**: 音量レベルの可視化と無音状態の検出
 
@@ -25,7 +25,7 @@ Google Gemini AIを使用した音声録音・書き起こしシステムのプ�
 
 ## 📋 前提条件
 
-- Node.js 18以上
+- Node.js 18 以上
 - pnpm (推奨) または npm
 - Google AI Studio API キー
 
@@ -48,7 +48,7 @@ npm install
 
 ### 3. 環境変数の設定
 
-`.env.example`をコピーして`.env`ファイルを作成し、Google AI Studio APIキーを設定してください。
+`.env.example` をコピーして `.env` ファイルを作成し、Google AI Studio API キーを設定してください。
 
 ```bash
 cp .env.example .env
@@ -67,7 +67,7 @@ VITE_GOOGLE_API_KEY=your_actual_api_key_here
 1. [Google AI Studio](https://aistudio.google.com/app/apikey) にアクセス
 2. Googleアカウントでログイン
 3. 「Create API Key」をクリック
-4. 生成されたAPIキーを`.env`ファイルに設定
+4. 生成されたAPIキーを `.env` ファイルに設定
 
 ## 🚀 実行方法
 
@@ -128,10 +128,10 @@ pnpm lint
 
 ### 書き起こし言語の変更
 
-`src/hooks/useTranscription.ts`の34行目でプロンプトを変更できます：
+`src/hooks/useTranscription.ts` の34行目でプロンプトを変更できます：
 
 ```typescript
-text: "Please transcribe the audio in English. Provide only the transcription text without any additional formatting or explanations.",
+text: "Please transcribe the audio in English. Provide only the transcription text without any additional formatting or explanations."
 ```
 
 ### 音声フォーマットの変更
@@ -161,7 +161,7 @@ src/
 
 1. **マイクアクセスエラー**
    - ブラウザの設定でマイクアクセスが許可されているか確認
-   - HTTPSでアクセスしているか確認（localhostは除く）
+   - HTTPSでアクセスしているか確認（localhost は除く）
 
 2. **書き起こしエラー**
    - Google AI Studio API キーが正しく設定されているか確認
@@ -174,4 +174,4 @@ src/
 
 ## 📄 ライセンス
 
-このプロジェクトはMITライセンスの下で公開されています。
+このプロジェクトは MIT ライセンスの下で公開されています。
