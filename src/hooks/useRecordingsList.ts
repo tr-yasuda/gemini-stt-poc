@@ -54,7 +54,7 @@ export const useRecordingsList = () => {
     const url = URL.createObjectURL(item.audioBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `音声録音_${item.timestamp.toLocaleDateString("ja-JP").replace(/\//g, "-")}_${item.id}.wav`;
+    a.download = `音声録音_${item.timestamp.toLocaleDateString("ja-JP").replace(/\//g, "-")}_${item.id}.webm`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

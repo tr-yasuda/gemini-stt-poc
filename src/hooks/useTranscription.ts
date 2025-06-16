@@ -32,14 +32,14 @@ export const useTranscription = () => {
 
         // Gemini APIで書き起こし
         const response = await ai.models.generateContent({
-          model: "gemini-2.0-flash",
+          model: "gemini-2.5-flash-preview-05-20",
           contents: [
             {
-              text: "Please transcribe the audio in Japanese. Provide only the transcription text without any additional formatting or explanations.",
+              text: "Please transcribe the audio exactly as spoken, using the same language as the audio (e.g., Japanese, English, or Korean). Provide only the transcription text, without any additional formatting or explanations.",
             },
             {
               inlineData: {
-                mimeType: "audio/wav",
+                mimeType: "audio/webm",
                 data: base64String,
               },
             },

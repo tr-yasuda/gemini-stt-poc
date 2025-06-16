@@ -17,7 +17,7 @@ Google Gemini AI を使用した音声録音・書き起こしシステムのプ
 ## 🚀 技術スタック
 
 - **フロントエンド**: React 19 + TypeScript + Vite
-- **AIサービス**: Google Gemini 2.0 Flash API
+- **AIサービス**: Google Gemini 2.5 Flash API
 - **UIライブラリ**: shadcn/ui + Tailwind CSS
 - **音声処理**: Web Audio API + MediaRecorder API
 - **スタイリング**: Tailwind CSS v4
