@@ -34,7 +34,7 @@ Google Gemini AI を使用した音声録音・書き起こしシステムのプ
 ### 1. リポジトリのクローン
 
 ```bash
-git clone <リポジトリURL>
+git clone https://github.com/tr-yasuda/gemini-stt-poc.git
 cd gemini-stt-poc
 ```
 
