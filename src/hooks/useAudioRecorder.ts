@@ -1,8 +1,10 @@
 import { useCallback, useRef, useState } from "react";
+import type { AutoSplitConfig } from "../types/audio";
 
-export const useAudioRecorder = () => {
+export const useAudioRecorder = (autoSplitConfig?: AutoSplitConfig) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [currentSegmentTime, setCurrentSegmentTime] = useState(0);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -10,11 +12,53 @@ export const useAudioRecorder = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const recordingStartTimeRef = useRef<number>(0);
   const currentSegmentStartTimeRef = useRef<number>(0);
+  const maxDurationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalSplitTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const setupAutoSplitTimers = useCallback(
+    (onSplit: () => void) => {
+      if (!autoSplitConfig) return;
+
+      // 最大録音時間による自動分割
+      if (autoSplitConfig.maxDuration.enabled) {
+        maxDurationTimerRef.current = setTimeout(() => {
+          console.log("最大録音時間に達したため分割実行");
+          onSplit();
+        }, autoSplitConfig.maxDuration.duration * 1000);
+      }
+
+      // 定期間隔による自動分割
+      if (autoSplitConfig.intervalSplit.enabled) {
+        const setupIntervalSplit = () => {
+          intervalSplitTimerRef.current = setTimeout(() => {
+            console.log("定期間隔により分割実行");
+            onSplit();
+            // 次の分割タイマーをセットアップ
+            setupIntervalSplit();
+          }, autoSplitConfig.intervalSplit.interval * 1000);
+        };
+        setupIntervalSplit();
+      }
+    },
+    [autoSplitConfig],
+  );
+
+  const clearAutoSplitTimers = useCallback(() => {
+    if (maxDurationTimerRef.current) {
+      clearTimeout(maxDurationTimerRef.current);
+      maxDurationTimerRef.current = null;
+    }
+    if (intervalSplitTimerRef.current) {
+      clearTimeout(intervalSplitTimerRef.current);
+      intervalSplitTimerRef.current = null;
+    }
+  }, []);
 
   const startRecording = useCallback(
     async (
       onRecordingSaved: (audioBlob: Blob, duration: number) => void,
       onVolumeMonitoringSetup: (stream: MediaStream) => void,
+      onAutoSplit?: () => void,
     ) => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -65,6 +109,7 @@ export const useAudioRecorder = () => {
         mediaRecorderRef.current.start();
         setIsRecording(true);
         setRecordingTime(0);
+        setCurrentSegmentTime(0);
 
         // 録音開始時刻を記録
         recordingStartTimeRef.current = Date.now();
@@ -73,7 +118,13 @@ export const useAudioRecorder = () => {
         // Start timer
         timerRef.current = setInterval(() => {
           setRecordingTime((prev) => prev + 1);
+          setCurrentSegmentTime((prev) => prev + 1);
         }, 1000);
+
+        // 自動分割タイマーを設定
+        if (onAutoSplit) {
+          setupAutoSplitTimers(onAutoSplit);
+        }
 
         // 音量監視を開始（setIsRecordingの後で）
         setTimeout(() => {
@@ -86,7 +137,7 @@ export const useAudioRecorder = () => {
         );
       }
     },
-    [],
+    [setupAutoSplitTimers],
   );
 
   const stopRecording = useCallback(() => {
@@ -108,9 +159,13 @@ export const useAudioRecorder = () => {
       timerRef.current = null;
     }
 
+    // 自動分割タイマーをクリア
+    clearAutoSplitTimers();
+
     setIsRecording(false);
     setRecordingTime(0);
-  }, [isRecording]);
+    setCurrentSegmentTime(0);
+  }, [isRecording, clearAutoSplitTimers]);
 
   const splitRecording = useCallback(
     (onRecordingSaved: (audioBlob: Blob, duration: number) => void) => {
@@ -182,10 +237,32 @@ export const useAudioRecorder = () => {
 
           mediaRecorderRef.current.start();
           currentSegmentStartTimeRef.current = actualDuration;
+          
+          // 現在のセグメント時間をリセット
+          setCurrentSegmentTime(0);
+          
+          // 自動分割タイマーを再設定（間隔分割のみ）
+          if (autoSplitConfig?.intervalSplit.enabled) {
+            const setupIntervalSplit = () => {
+              intervalSplitTimerRef.current = setTimeout(() => {
+                console.log("定期間隔により分割実行");
+                splitRecording(onRecordingSaved);
+              }, autoSplitConfig.intervalSplit.interval * 1000);
+            };
+            setupIntervalSplit();
+          }
         }
       }, 100);
     },
-    [recordingTime],
+    [recordingTime, autoSplitConfig],
+  );
+
+  const manualSplit = useCallback(
+    (onRecordingSaved: (audioBlob: Blob, duration: number) => void) => {
+      console.log("手動分割を実行");
+      splitRecording(onRecordingSaved);
+    },
+    [splitRecording],
   );
 
   const formatTime = useCallback((seconds: number) => {
@@ -197,9 +274,11 @@ export const useAudioRecorder = () => {
   return {
     isRecording,
     recordingTime,
+    currentSegmentTime,
     startRecording,
     stopRecording,
     splitRecording,
+    manualSplit,
     formatTime,
   };
 };

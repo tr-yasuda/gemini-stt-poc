@@ -19,15 +19,22 @@ import {
   MicOff,
   Pause,
   Play,
+  Scissors,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
-import type { RecordedItem, SilenceDetectionConfig } from "../types/audio";
+import type { AutoSplitConfig, RecordedItem, SilenceDetectionConfig } from "../types/audio";
 
 const AudioRecorder = () => {
   const [silenceDetectionEnabled, setSilenceDetectionEnabled] = useState(true);
   const [silenceThreshold, setSilenceThreshold] = useState(0.05); // 音量閾値
   const [silenceDuration, setSilenceDuration] = useState(1); // 無音継続時間（秒）
+
+  // 新しい自動分割設定
+  const [maxDurationEnabled, setMaxDurationEnabled] = useState(false);
+  const [maxDuration, setMaxDuration] = useState(300); // 最大録音時間（秒）
+  const [intervalSplitEnabled, setIntervalSplitEnabled] = useState(false);
+  const [intervalDuration, setIntervalDuration] = useState(60); // 定期分割間隔（秒）
 
   const silenceConfig: SilenceDetectionConfig = {
     enabled: silenceDetectionEnabled,
@@ -35,15 +42,28 @@ const AudioRecorder = () => {
     duration: silenceDuration,
   };
 
+  const autoSplitConfig: AutoSplitConfig = {
+    maxDuration: {
+      enabled: maxDurationEnabled,
+      duration: maxDuration,
+    },
+    intervalSplit: {
+      enabled: intervalSplitEnabled,
+      interval: intervalDuration,
+    },
+  };
+
   // Custom hooks
   const {
     isRecording,
     recordingTime,
+    currentSegmentTime,
     startRecording,
     stopRecording,
     splitRecording,
+    manualSplit,
     formatTime,
-  } = useAudioRecorder();
+  } = useAudioRecorder(autoSplitConfig);
 
   const {
     volumeData,
@@ -79,6 +99,7 @@ const AudioRecorder = () => {
       },
       (stream: MediaStream) =>
         setupVolumeMonitoring(stream, handleSplitRecording),
+      handleSplitRecording, // 自動分割のコールバック
     );
   };
 
@@ -93,6 +114,18 @@ const AudioRecorder = () => {
       // 分割された新しいセグメントも自動書き起こし
       setTimeout(async () => {
         console.log("分割セグメント自動書き起こしを開始:", newItem.id);
+        await handleTranscribeAudio(newItem);
+      }, 500);
+    });
+    resetSilenceTimer();
+  };
+
+  const handleManualSplit = () => {
+    manualSplit((audioBlob, duration) => {
+      const newItem = addRecording(audioBlob, duration);
+      // 手動分割された新しいセグメントも自動書き起こし
+      setTimeout(async () => {
+        console.log("手動分割セグメント自動書き起こしを開始:", newItem.id);
         await handleTranscribeAudio(newItem);
       }, 500);
     });
@@ -138,7 +171,7 @@ const AudioRecorder = () => {
                     onCheckedChange={setSilenceDetectionEnabled}
                   />
                   <Label htmlFor="silenceDetection" className="text-sm">
-                    自動分割を有効化
+                    無音検出分割を有効化
                   </Label>
                 </div>
 
@@ -175,25 +208,119 @@ const AudioRecorder = () => {
             </CardContent>
           </Card>
 
+          {/* Auto Split Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">時間分割設定</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="maxDurationSplit"
+                      checked={maxDurationEnabled}
+                      onCheckedChange={setMaxDurationEnabled}
+                    />
+                    <Label htmlFor="maxDurationSplit" className="text-sm">
+                      最大録音時間で分割
+                    </Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">
+                      最大録音時間: {Math.floor(maxDuration / 60)}分{maxDuration % 60}秒
+                    </Label>
+                    <Slider
+                      value={[maxDuration]}
+                      onValueChange={(value) => setMaxDuration(value[0])}
+                      min={60}
+                      max={1800} // 30分
+                      step={30}
+                      disabled={isRecording || !maxDurationEnabled}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="intervalSplit"
+                      checked={intervalSplitEnabled}
+                      onCheckedChange={setIntervalSplitEnabled}
+                    />
+                    <Label htmlFor="intervalSplit" className="text-sm">
+                      定期間隔で分割
+                    </Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">
+                      分割間隔: {Math.floor(intervalDuration / 60)}分{intervalDuration % 60}秒
+                    </Label>
+                    <Slider
+                      value={[intervalDuration]}
+                      onValueChange={(value) => setIntervalDuration(value[0])}
+                      min={10}
+                      max={600} // 10分
+                      step={10}
+                      disabled={isRecording || !intervalSplitEnabled}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Separator />
 
           {/* Recording Controls */}
           <div className="flex flex-col items-center space-y-4">
-            <Button
-              onClick={isRecording ? handleStopRecording : handleStartRecording}
-              size="lg"
-              variant={isRecording ? "destructive" : "default"}
-              className="flex items-center space-x-2 px-6 py-3"
-            >
-              {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
-              <span>{isRecording ? "録音停止" : "録音開始"}</span>
-            </Button>
+            <div className="flex space-x-4">
+              <Button
+                onClick={isRecording ? handleStopRecording : handleStartRecording}
+                size="lg"
+                variant={isRecording ? "destructive" : "default"}
+                className="flex items-center space-x-2 px-6 py-3"
+              >
+                {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
+                <span>{isRecording ? "録音停止" : "録音開始"}</span>
+              </Button>
+              
+              {isRecording && (
+                <Button
+                  onClick={handleManualSplit}
+                  size="lg"
+                  variant="outline"
+                  className="flex items-center space-x-2 px-6 py-3"
+                >
+                  <Scissors size={20} />
+                  <span>手動分割</span>
+                </Button>
+              )}
+            </div>
 
             {/* Recording Status */}
             {isRecording && (
               <div className="text-center w-full max-w-md space-y-4">
-                <div className="text-lg font-mono">
-                  録音時間: {formatTime(recordingTime)}
+                <div className="space-y-1">
+                  <div className="text-lg font-mono">
+                    全体録音時間: {formatTime(recordingTime)}
+                  </div>
+                  <div className="text-md font-mono text-muted-foreground">
+                    現在のセグメント: {formatTime(currentSegmentTime)}
+                  </div>
+                  {/* 次の分割までの時間を表示 */}
+                  {(maxDurationEnabled || intervalSplitEnabled) && (
+                    <div className="text-sm text-muted-foreground">
+                      {maxDurationEnabled && currentSegmentTime < maxDuration && (
+                        <div>最大時間まで: {formatTime(maxDuration - currentSegmentTime)}</div>
+                      )}
+                      {intervalSplitEnabled && (
+                        <div>次の定期分割まで: {formatTime(intervalDuration - (currentSegmentTime % intervalDuration))}</div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Volume Level Indicator */}
@@ -219,7 +346,9 @@ const AudioRecorder = () => {
                 <div className="flex items-center justify-center space-x-2">
                   <div className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
                   <span className="text-sm text-muted-foreground">
-                    録音中...{silenceDetectionEnabled ? "（自動分割有効）" : ""}
+                    録音中...
+                    {(silenceDetectionEnabled || maxDurationEnabled || intervalSplitEnabled) && 
+                      "（自動分割有効）"}
                   </span>
                 </div>
               </div>
@@ -235,10 +364,24 @@ const AudioRecorder = () => {
             <CardTitle className="text-xl">
               録音履歴 ({recordedItems.length}件)
             </CardTitle>
-            {silenceDetectionEnabled && (
-              <Badge variant="secondary" className="text-xs">
-                無音検出により自動分割・自動書き起こし
-              </Badge>
+            {(silenceDetectionEnabled || maxDurationEnabled || intervalSplitEnabled) && (
+              <div className="flex flex-wrap gap-2">
+                {silenceDetectionEnabled && (
+                  <Badge variant="secondary" className="text-xs">
+                    無音検出分割
+                  </Badge>
+                )}
+                {maxDurationEnabled && (
+                  <Badge variant="outline" className="text-xs">
+                    最大時間分割
+                  </Badge>
+                )}
+                {intervalSplitEnabled && (
+                  <Badge variant="outline" className="text-xs">
+                    定期間隔分割
+                  </Badge>
+                )}
+              </div>
             )}
           </div>
         </CardHeader>

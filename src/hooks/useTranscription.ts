@@ -25,17 +25,28 @@ export const useTranscription = () => {
       onStart(item.id);
 
       try {
-        // BlobをBase64に変換
-        const arrayBuffer = await item.audioBlob.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        const base64String = btoa(String.fromCharCode(...uint8Array));
+        // BlobをBase64に変換（大きなファイルに対応）
+        const base64String = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (typeof reader.result === "string") {
+              // "data:audio/webm;base64," を除去してBase64部分のみを取得
+              const base64 = reader.result.split(",")[1];
+              resolve(base64);
+            } else {
+              reject(new Error("FileReader result is not a string"));
+            }
+          };
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(item.audioBlob);
+        });
 
         // Gemini APIで書き起こし
         const response = await ai.models.generateContent({
           model: "gemini-2.5-flash-preview-05-20",
           contents: [
             {
-              text: "Please transcribe the audio exactly as spoken, using the same language as the audio (e.g., Japanese, English, or Korean). Provide only the transcription text, without any additional formatting or explanations.",
+              text: "Please transcribe the audio exactly as spoken, using the same language as the audio (e.g., Japanese, English, or Korean). Return only the transcription text, without any explanations or commentary. If no speech is detected or the audio is silent, return nothing.",
             },
             {
               inlineData: {
