@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { useCallback } from "react";
 import type { RecordedItem } from "../types/audio";
 
-export const useTranscription = () => {
+export const useTranscription = (selectedModel = "gemini-2.0-flash-lite") => {
   const ai = new GoogleGenAI({
     apiKey: import.meta.env.VITE_GOOGLE_API_KEY ?? "",
   });
@@ -43,7 +43,7 @@ export const useTranscription = () => {
 
         // Gemini APIで書き起こし
         const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash-preview-05-20",
+          model: selectedModel,
           contents: [
             {
               text: "Please transcribe the audio exactly as spoken, using the same language as the audio (e.g., Japanese, English, or Korean). Return only the transcription text, without any explanations or commentary. If no speech is detected or the audio is silent, return nothing.",
@@ -69,7 +69,7 @@ export const useTranscription = () => {
         );
       }
     },
-    [ai],
+    [ai, selectedModel],
   );
 
   return { transcribeAudio };

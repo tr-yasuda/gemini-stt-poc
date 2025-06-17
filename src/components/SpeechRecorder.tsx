@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -25,6 +26,15 @@ import {
 import { useState } from "react";
 import type { AutoSplitConfig, RecordedItem, SilenceDetectionConfig } from "../types/audio";
 
+// 利用可能なGeminiモデル
+const AVAILABLE_MODELS = [
+  { value: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite" },
+  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+  { value: "gemini-2.5-flash-preview-05-20", label: "Gemini 2.5 Flash" },
+  { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+  { value: "gemini-1.5-flash-8b", label: "Gemini 1.5 Flash 8B" },
+] as const;
+
 const AudioRecorder = () => {
   const [silenceDetectionEnabled, setSilenceDetectionEnabled] = useState(true);
   const [silenceThreshold, setSilenceThreshold] = useState(0.05); // 音量閾値
@@ -35,6 +45,9 @@ const AudioRecorder = () => {
   const [maxDuration, setMaxDuration] = useState(300); // 最大録音時間（秒）
   const [intervalSplitEnabled, setIntervalSplitEnabled] = useState(false);
   const [intervalDuration, setIntervalDuration] = useState(60); // 定期分割間隔（秒）
+
+  // モデル選択
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.0-flash-lite");
 
   const silenceConfig: SilenceDetectionConfig = {
     enabled: silenceDetectionEnabled,
@@ -84,7 +97,7 @@ const AudioRecorder = () => {
   const { currentPlayingId, togglePlayAudio, stopCurrentPlayback } =
     useAudioPlayer();
 
-  const { transcribeAudio } = useTranscription();
+  const { transcribeAudio } = useTranscription(selectedModel);
 
   // Recording handlers
   const handleStartRecording = async () => {
@@ -268,6 +281,33 @@ const AudioRecorder = () => {
                     />
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Model Selection */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">書き起こしモデル設定</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label className="text-sm">モデル選択</Label>
+                <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isRecording}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="モデルを選択してください" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AVAILABLE_MODELS.map((model) => (
+                      <SelectItem key={model.value} value={model.value}>
+                        {model.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  録音中はモデルを変更できません。モデルにより処理速度や精度が異なります。
+                </p>
               </div>
             </CardContent>
           </Card>
