@@ -12,12 +12,7 @@ export const useRecordingsList = () => {
       duration,
     };
 
-    console.log("新しい録音アイテムを追加:", newItem);
-    setRecordedItems((prev) => {
-      const updatedItems = [newItem, ...prev];
-      console.log("録音履歴更新:", updatedItems);
-      return updatedItems;
-    });
+    setRecordedItems((prev) => [newItem, ...prev]);
 
     return newItem;
   }, []);
@@ -50,16 +45,19 @@ export const useRecordingsList = () => {
     [],
   );
 
-  const downloadAudio = useCallback((item: RecordedItem) => {
-    const url = URL.createObjectURL(item.audioBlob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `音声録音_${item.timestamp.toLocaleDateString("ja-JP").replace(/\//g, "-")}_${item.id}.webm`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, []);
+  const downloadAudio = useCallback(
+    (item: RecordedItem, extension = "webm") => {
+      const url = URL.createObjectURL(item.audioBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `音声録音_${item.timestamp.toLocaleDateString("ja-JP").replace(/\//g, "-")}_${item.id}.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+    [],
+  );
 
   return {
     recordedItems,

@@ -50,16 +50,14 @@ export const useVolumeMonitoring = (config: SilenceDetectionConfig) => {
           // 無音検出
           if (average < config.threshold) {
             if (!silenceTimerRef.current) {
-              console.log(`無音検出開始 - タイマー開始 (${config.duration}秒)`);
               silenceTimerRef.current = setTimeout(() => {
-                console.log("無音継続時間経過 - 分割実行");
+                console.log("無音検出による自動分割");
                 onSilenceDetected();
               }, config.duration * 1000);
             }
           } else {
             // 音声が検出されたらタイマーをリセット
             if (silenceTimerRef.current) {
-              console.log("音声検出 - タイマーリセット");
               clearTimeout(silenceTimerRef.current);
               silenceTimerRef.current = null;
             }

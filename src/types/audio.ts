@@ -5,13 +5,13 @@ export type RecordedItem = {
   duration: number;
   transcription?: string;
   isTranscribing?: boolean;
-}
+};
 
 export type SilenceDetectionConfig = {
   enabled: boolean;
   threshold: number;
   duration: number;
-}
+};
 
 export type AutoSplitConfig = {
   maxDuration: {
@@ -22,9 +22,22 @@ export type AutoSplitConfig = {
     enabled: boolean;
     interval: number; // 自動分割間隔（秒）
   };
-}
+};
 
 export type VolumeMonitoringData = {
   currentVolume: number;
   isAboveThreshold: boolean;
-}
+};
+
+export type AudioFormat = {
+  mimeType: string;
+  extension: string;
+  label: string;
+  codec?: string;
+};
+
+export type AudioFormatConfig = {
+  format: AudioFormat;
+  bitrate?: number;
+  sampleRate?: number;
+};

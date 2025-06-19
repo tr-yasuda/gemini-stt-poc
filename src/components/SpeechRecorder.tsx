@@ -3,15 +3,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { useAudioPlayer } from "@/hooks/useAudioPlayer.ts";
-import { useAudioRecorder } from "@/hooks/useAudioRecorder.ts";
-import { useRecordingsList } from "@/hooks/useRecordingsList.ts";
-import { useTranscription } from "@/hooks/useTranscription.ts";
-import { useVolumeMonitoring } from "@/hooks/useVolumeMonitoring.ts";
+import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import {
+  debugAudioFormats,
+  getSupportedAudioFormats,
+  useAudioRecorder,
+} from "@/hooks/useAudioRecorder";
+import { useRawPCMRecorder } from "@/hooks/useRawPCMRecorder";
+import { useRecordingsList } from "@/hooks/useRecordingsList";
+import { useTranscription } from "@/hooks/useTranscription";
+import { useVolumeMonitoring } from "@/hooks/useVolumeMonitoring";
 import {
   Download,
   FileText,
@@ -24,7 +35,13 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
-import type { AutoSplitConfig, RecordedItem, SilenceDetectionConfig } from "../types/audio";
+import type {
+  AudioFormat,
+  AudioFormatConfig,
+  AutoSplitConfig,
+  RecordedItem,
+  SilenceDetectionConfig,
+} from "../types/audio";
 
 // 利用可能なGeminiモデル
 const AVAILABLE_MODELS = [
@@ -47,7 +64,22 @@ const AudioRecorder = () => {
   const [intervalDuration, setIntervalDuration] = useState(60); // 定期分割間隔（秒）
 
   // モデル選択
-  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.0-flash-lite");
+  const [selectedModel, setSelectedModel] = useState<string>(
+    "gemini-2.0-flash-lite",
+  );
+
+  // 音声フォーマット選択
+  const supportedFormats = getSupportedAudioFormats();
+  const [selectedFormat, setSelectedFormat] = useState<AudioFormat>(
+    supportedFormats.find((f) => f.mimeType === "audio/webm;codecs=opus") ||
+      supportedFormats.find((f) => f.mimeType === "audio/webm") ||
+      supportedFormats[0],
+  );
+  const [audioBitrate, setAudioBitrate] = useState<number>(128000); // 128kbps
+
+  // PCMモード設定
+  const [useRawPCM, setUseRawPCM] = useState<boolean>(false);
+  const [pcmSampleRate, setPcmSampleRate] = useState<number>(44100);
 
   const silenceConfig: SilenceDetectionConfig = {
     enabled: silenceDetectionEnabled,
@@ -66,6 +98,11 @@ const AudioRecorder = () => {
     },
   };
 
+  const audioFormatConfig: AudioFormatConfig = {
+    format: selectedFormat,
+    bitrate: audioBitrate,
+  };
+
   // Custom hooks
   const {
     isRecording,
@@ -76,7 +113,15 @@ const AudioRecorder = () => {
     splitRecording,
     manualSplit,
     formatTime,
-  } = useAudioRecorder(autoSplitConfig);
+  } = useAudioRecorder(autoSplitConfig, audioFormatConfig);
+
+  const {
+    isRecording: isPCMRecording,
+    recordingTime: pcmRecordingTime,
+    startRawPCMRecording,
+    stopRawPCMRecording,
+    formatTime: formatPCMTime,
+  } = useRawPCMRecorder();
 
   const {
     volumeData,
@@ -101,24 +146,49 @@ const AudioRecorder = () => {
 
   // Recording handlers
   const handleStartRecording = async () => {
-    await startRecording(
-      (audioBlob, duration) => {
-        const newItem = addRecording(audioBlob, duration);
-        // 新しいセグメントが保存されたら自動的に書き起こしを開始
-        setTimeout(() => {
-          console.log("自動書き起こしを開始:", newItem.id);
-          handleTranscribeAudio(newItem);
-        }, 500);
-      },
-      (stream: MediaStream) =>
-        setupVolumeMonitoring(stream, handleSplitRecording),
-      handleSplitRecording, // 自動分割のコールバック
-    );
+    if (useRawPCM) {
+      // Raw PCMモード
+      await startRawPCMRecording(
+        (audioBlob, duration) => {
+          const newItem = addRecording(audioBlob, duration);
+          setTimeout(() => {
+            console.log("Raw PCM自動書き起こしを開始:", newItem.id);
+            handleTranscribeAudio(newItem);
+          }, 500);
+        },
+        pcmSampleRate,
+        1, // モノラル
+      );
+    } else {
+      // MediaRecorderモード
+      await startRecording(
+        (audioBlob, duration) => {
+          const newItem = addRecording(audioBlob, duration);
+          setTimeout(() => {
+            console.log("自動書き起こしを開始:", newItem.id);
+            handleTranscribeAudio(newItem);
+          }, 500);
+        },
+        (stream: MediaStream) =>
+          setupVolumeMonitoring(stream, handleSplitRecording),
+        handleSplitRecording,
+      );
+    }
   };
 
   const handleStopRecording = async () => {
-    stopRecording();
-    await stopVolumeMonitoring();
+    if (useRawPCM) {
+      stopRawPCMRecording((audioBlob, duration) => {
+        const newItem = addRecording(audioBlob, duration);
+        setTimeout(() => {
+          console.log("Raw PCM最終書き起こしを開始:", newItem.id);
+          handleTranscribeAudio(newItem);
+        }, 500);
+      });
+    } else {
+      stopRecording();
+      await stopVolumeMonitoring();
+    }
   };
 
   const handleSplitRecording = () => {
@@ -241,7 +311,8 @@ const AudioRecorder = () => {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm">
-                      最大録音時間: {Math.floor(maxDuration / 60)}分{maxDuration % 60}秒
+                      最大録音時間: {Math.floor(maxDuration / 60)}分
+                      {maxDuration % 60}秒
                     </Label>
                     <Slider
                       value={[maxDuration]}
@@ -268,7 +339,8 @@ const AudioRecorder = () => {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm">
-                      分割間隔: {Math.floor(intervalDuration / 60)}分{intervalDuration % 60}秒
+                      分割間隔: {Math.floor(intervalDuration / 60)}分
+                      {intervalDuration % 60}秒
                     </Label>
                     <Slider
                       value={[intervalDuration]}
@@ -293,7 +365,11 @@ const AudioRecorder = () => {
             <CardContent>
               <div className="space-y-2">
                 <Label className="text-sm">モデル選択</Label>
-                <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isRecording}>
+                <Select
+                  value={selectedModel}
+                  onValueChange={setSelectedModel}
+                  disabled={isRecording}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="モデルを選択してください" />
                   </SelectTrigger>
@@ -312,22 +388,180 @@ const AudioRecorder = () => {
             </CardContent>
           </Card>
 
+          {/* Audio Format Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">音声フォーマット設定</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* PCMモード切り替え */}
+              <div className="mb-6 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
+                <div className="flex items-center space-x-2 mb-3">
+                  <Switch
+                    id="rawPCMMode"
+                    checked={useRawPCM}
+                    onCheckedChange={setUseRawPCM}
+                    disabled={isRecording || isPCMRecording}
+                  />
+                  <Label htmlFor="rawPCMMode" className="text-sm font-medium">
+                    Raw PCMモード（高精度書き起こし用）
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {useRawPCM
+                    ? "マイクから直接PCM生データを取得します。圧縮による音質劣化がないため、書き起こし精度が向上する可能性があります。"
+                    : "MediaRecorder APIを使用して録音します。様々なフォーマットを選択できます。"}
+                </p>
+              </div>
+
+              {useRawPCM ? (
+                // Raw PCMモードの設定
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm">
+                      サンプルレート: {(pcmSampleRate / 1000).toFixed(1)}kHz
+                    </Label>
+                    <Slider
+                      value={[pcmSampleRate]}
+                      onValueChange={(value) => setPcmSampleRate(value[0])}
+                      min={8000}
+                      max={48000}
+                      step={8000}
+                      disabled={isRecording || isPCMRecording}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      高いサンプルレートほど音質が良くなりますが、ファイルサイズも大きくなります。
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-sm">
+                      <strong>PCM設定:</strong>{" "}
+                      {(pcmSampleRate / 1000).toFixed(1)}kHz, 16-bit, モノラル
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      出力ファイル: WAV形式 (.wav)
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                // MediaRecorderモードの設定
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-sm">音声フォーマット</Label>
+                    <Select
+                      value={selectedFormat.mimeType}
+                      onValueChange={(value) => {
+                        const format = supportedFormats.find(
+                          (f) => f.mimeType === value,
+                        );
+                        if (format) setSelectedFormat(format);
+                      }}
+                      disabled={isRecording || isPCMRecording}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="フォーマットを選択してください" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 overflow-y-auto">
+                        {supportedFormats.map((format) => (
+                          <SelectItem
+                            key={format.mimeType}
+                            value={format.mimeType}
+                          >
+                            <div className="flex flex-col">
+                              <span>{format.label}</span>
+                              <span className="text-xs text-muted-foreground">
+                                .{format.extension}{" "}
+                                {format.codec && `(${format.codec})`}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      ブラウザでサポートされているフォーマットのみ表示されます。
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">
+                      音声ビットレート: {(audioBitrate / 1000).toFixed(0)}kbps
+                    </Label>
+                    <Slider
+                      value={[audioBitrate]}
+                      onValueChange={(value) => setAudioBitrate(value[0])}
+                      min={64000}
+                      max={320000}
+                      step={32000}
+                      disabled={isRecording || isPCMRecording}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      高いビットレートほど音質が良くなりますが、ファイルサイズも大きくなります。
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!useRawPCM && (
+                <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm">
+                        <strong>選択中:</strong> {selectedFormat.label} (
+                        {(audioBitrate / 1000).toFixed(0)}kbps)
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ファイル拡張子: .{selectedFormat.extension}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        サポート済みフォーマット: {supportedFormats.length}個
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={debugAudioFormats}
+                      className="text-xs"
+                    >
+                      デバッグ情報
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Separator />
 
           {/* Recording Controls */}
           <div className="flex flex-col items-center space-y-4">
             <div className="flex space-x-4">
               <Button
-                onClick={isRecording ? handleStopRecording : handleStartRecording}
+                onClick={
+                  isRecording || isPCMRecording
+                    ? handleStopRecording
+                    : handleStartRecording
+                }
                 size="lg"
-                variant={isRecording ? "destructive" : "default"}
+                variant={
+                  isRecording || isPCMRecording ? "destructive" : "default"
+                }
                 className="flex items-center space-x-2 px-6 py-3"
               >
-                {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
-                <span>{isRecording ? "録音停止" : "録音開始"}</span>
+                {isRecording || isPCMRecording ? (
+                  <MicOff size={20} />
+                ) : (
+                  <Mic size={20} />
+                )}
+                <span>
+                  {isRecording || isPCMRecording ? "録音停止" : "録音開始"}
+                </span>
               </Button>
-              
-              {isRecording && (
+
+              {isRecording && !useRawPCM && (
                 <Button
                   onClick={handleManualSplit}
                   size="lg"
@@ -341,30 +575,55 @@ const AudioRecorder = () => {
             </div>
 
             {/* Recording Status */}
-            {isRecording && (
+            {(isRecording || isPCMRecording) && (
               <div className="text-center w-full max-w-md space-y-4">
                 <div className="space-y-1">
-                  <div className="text-lg font-mono">
-                    全体録音時間: {formatTime(recordingTime)}
-                  </div>
-                  <div className="text-md font-mono text-muted-foreground">
-                    現在のセグメント: {formatTime(currentSegmentTime)}
-                  </div>
-                  {/* 次の分割までの時間を表示 */}
-                  {(maxDurationEnabled || intervalSplitEnabled) && (
+                  {useRawPCM ? (
+                    <div className="text-lg font-mono">
+                      PCM録音時間: {formatPCMTime(pcmRecordingTime)}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-lg font-mono">
+                        全体録音時間: {formatTime(recordingTime)}
+                      </div>
+                      <div className="text-md font-mono text-muted-foreground">
+                        現在のセグメント: {formatTime(currentSegmentTime)}
+                      </div>
+                    </>
+                  )}
+                  {/* 次の分割までの時間を表示（PCMモードでは非表示） */}
+                  {!useRawPCM &&
+                    (maxDurationEnabled || intervalSplitEnabled) && (
+                      <div className="text-sm text-muted-foreground">
+                        {maxDurationEnabled &&
+                          currentSegmentTime < maxDuration && (
+                            <div>
+                              最大時間まで:{" "}
+                              {formatTime(maxDuration - currentSegmentTime)}
+                            </div>
+                          )}
+                        {intervalSplitEnabled && (
+                          <div>
+                            次の定期分割まで:{" "}
+                            {formatTime(
+                              intervalDuration -
+                                (currentSegmentTime % intervalDuration),
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                  {useRawPCM && (
                     <div className="text-sm text-muted-foreground">
-                      {maxDurationEnabled && currentSegmentTime < maxDuration && (
-                        <div>最大時間まで: {formatTime(maxDuration - currentSegmentTime)}</div>
-                      )}
-                      {intervalSplitEnabled && (
-                        <div>次の定期分割まで: {formatTime(intervalDuration - (currentSegmentTime % intervalDuration))}</div>
-                      )}
+                      Raw PCMモード - 高精度録音中
                     </div>
                   )}
                 </div>
 
-                {/* Volume Level Indicator */}
-                {silenceDetectionEnabled && (
+                {/* Volume Level Indicator（PCMモードでは非表示） */}
+                {!useRawPCM && silenceDetectionEnabled && (
                   <div className="space-y-2">
                     <Label className="text-sm">
                       音量レベル: {(volumeData.currentVolume * 100).toFixed(1)}%
@@ -387,7 +646,9 @@ const AudioRecorder = () => {
                   <div className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
                   <span className="text-sm text-muted-foreground">
                     録音中...
-                    {(silenceDetectionEnabled || maxDurationEnabled || intervalSplitEnabled) && 
+                    {(silenceDetectionEnabled ||
+                      maxDurationEnabled ||
+                      intervalSplitEnabled) &&
                       "（自動分割有効）"}
                   </span>
                 </div>
@@ -404,7 +665,9 @@ const AudioRecorder = () => {
             <CardTitle className="text-xl">
               録音履歴 ({recordedItems.length}件)
             </CardTitle>
-            {(silenceDetectionEnabled || maxDurationEnabled || intervalSplitEnabled) && (
+            {(silenceDetectionEnabled ||
+              maxDurationEnabled ||
+              intervalSplitEnabled) && (
               <div className="flex flex-wrap gap-2">
                 {silenceDetectionEnabled && (
                   <Badge variant="secondary" className="text-xs">
@@ -475,7 +738,9 @@ const AudioRecorder = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => downloadAudio(item)}
+                          onClick={() =>
+                            downloadAudio(item, selectedFormat.extension)
+                          }
                           title="音声ダウンロード"
                         >
                           <Download size={18} />

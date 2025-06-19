@@ -25,14 +25,18 @@ export const useTranscription = (selectedModel = "gemini-2.0-flash-lite") => {
       onStart(item.id);
 
       try {
-        // BlobをBase64に変換（大きなファイルに対応）
-        const base64String = await new Promise<string>((resolve, reject) => {
+        // BlobをBase64に変換
+        const { base64String, mimeType } = await new Promise<{
+          base64String: string;
+          mimeType: string;
+        }>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => {
             if (typeof reader.result === "string") {
               // "data:audio/webm;base64," を除去してBase64部分のみを取得
               const base64 = reader.result.split(",")[1];
-              resolve(base64);
+              const mimeType = item.audioBlob.type || "audio/webm";
+              resolve({ base64String: base64, mimeType });
             } else {
               reject(new Error("FileReader result is not a string"));
             }
@@ -50,7 +54,7 @@ export const useTranscription = (selectedModel = "gemini-2.0-flash-lite") => {
             },
             {
               inlineData: {
-                mimeType: "audio/webm",
+                mimeType,
                 data: base64String,
               },
             },
