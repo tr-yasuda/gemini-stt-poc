@@ -270,7 +270,7 @@ export const getSupportedAudioFormats = (): AudioFormat[] => {
 // デバッグ用：すべてのフォーマットのサポート状況を表示
 export const debugAudioFormats = () => {
   console.log("=== 音声フォーマット サポート状況 ===");
-  AVAILABLE_AUDIO_FORMATS.forEach((format) => {
+  for (const format of AVAILABLE_AUDIO_FORMATS) {
     try {
       const isSupported = MediaRecorder.isTypeSupported(format.mimeType);
       console.log(`${isSupported ? "✅" : "❌"} ${format.label}`);
@@ -281,7 +281,7 @@ export const debugAudioFormats = () => {
     } catch (error) {
       console.log(`⚠️ ${format.label} - エラー:`, error);
     }
-  });
+  }
 };
 
 export const useAudioRecorder = (
@@ -421,7 +421,7 @@ export const useAudioRecorder = (
         );
       }
     },
-    [setupAutoSplitTimers],
+    [setupAutoSplitTimers, audioFormatConfig],
   );
 
   const stopRecording = useCallback(() => {
@@ -549,7 +549,7 @@ export const useAudioRecorder = (
         }
       }, 100);
     },
-    [recordingTime, autoSplitConfig],
+    [recordingTime, autoSplitConfig, audioFormatConfig],
   );
 
   const manualSplit = useCallback(
