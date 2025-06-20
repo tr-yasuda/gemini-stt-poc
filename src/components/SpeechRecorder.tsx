@@ -492,14 +492,14 @@ const AudioRecorder = () => {
                     <Slider
                       value={[audioBitrate]}
                       onValueChange={(value) => setAudioBitrate(value[0])}
-                      min={64000}
+                      min={8000}
                       max={320000}
-                      step={32000}
+                      step={8000}
                       disabled={isRecording || isPCMRecording}
                       className="w-full"
                     />
                     <p className="text-xs text-muted-foreground">
-                      高いビットレートほど音質が良くなりますが、ファイルサイズも大きくなります。
+                      高いビットレートほど音質が良くなりますが、ファイルサイズも大きくなります。低ビットレート（8-32kbps）は音声認識用途に適しています。
                     </p>
                   </div>
                 </div>
