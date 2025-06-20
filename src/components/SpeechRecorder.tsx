@@ -13,6 +13,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import {
   debugAudioFormats,
@@ -67,6 +68,10 @@ const AudioRecorder = () => {
   const [selectedModel, setSelectedModel] = useState<string>(
     "gemini-2.0-flash-lite",
   );
+
+  // プロンプト設定
+  const [customPrompt, setCustomPrompt] = useState<string>("");
+  const [useCustomPrompt, setUseCustomPrompt] = useState<boolean>(false);
 
   // 音声フォーマット選択
   const supportedFormats = getSupportedAudioFormats();
@@ -142,7 +147,10 @@ const AudioRecorder = () => {
   const { currentPlayingId, togglePlayAudio, stopCurrentPlayback } =
     useAudioPlayer();
 
-  const { transcribeAudio } = useTranscription(selectedModel);
+  const { transcribeAudio } = useTranscription(
+    selectedModel,
+    useCustomPrompt ? customPrompt : undefined,
+  );
 
   // Recording handlers
   const handleStartRecording = async () => {
@@ -384,6 +392,57 @@ const AudioRecorder = () => {
                 <p className="text-xs text-muted-foreground">
                   録音中はモデルを変更できません。モデルにより処理速度や精度が異なります。
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Prompt Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                書き起こしプロンプト設定
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="useCustomPrompt"
+                    checked={useCustomPrompt}
+                    onCheckedChange={setUseCustomPrompt}
+                    disabled={isRecording}
+                  />
+                  <Label htmlFor="useCustomPrompt" className="text-sm">
+                    カスタムプロンプトを使用
+                  </Label>
+                </div>
+
+                {useCustomPrompt && (
+                  <div className="space-y-2">
+                    <Label className="text-sm">カスタムプロンプト</Label>
+                    <Textarea
+                      value={customPrompt}
+                      onChange={(e) => setCustomPrompt(e.target.value)}
+                      placeholder="書き起こし用のカスタムプロンプトを入力してください..."
+                      disabled={isRecording}
+                      className="min-h-[100px]"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      例:
+                      「音声を日本語で書き起こしてください。専門用語は正確に記載し、句読点も適切に配置してください。」
+                    </p>
+                  </div>
+                )}
+
+                {!useCustomPrompt && (
+                  <div className="p-3 bg-muted rounded-md">
+                    <p className="text-sm text-muted-foreground">
+                      <strong>デフォルトプロンプト:</strong>
+                      <br />
+                      「音声を話された通りに正確に書き起こし、音声と同じ言語（日本語、英語、韓国語など）を使用してください。説明やコメントは含めず、書き起こしテキストのみを返してください。音声が検出されないか無音の場合は、何も返さないでください。」
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
